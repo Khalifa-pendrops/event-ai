@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ────────────────────────────────────────────────
+enum EventType {
+  WEDDING
+  TRADITIONAL_MARRIAGE
+  BIRTHDAY
+}
+
+enum Culture {
+  IGBO
+  YORUBA
+  HAUSA
+  GHANAIAN
+  OTHER
+}
+
+enum TemplateVariant {
+  LUXURY_GOLD
+  ELEGANT_WHITE
+  AFRICAN_HERITAGE
+  FLORAL
+  MODERN_MINIMAL
+  BLACK_PREMIUM
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttendanceStatus {
+  ATTENDING
+  DECLINED
+  PENDING
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+// ─── MODELS ───────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  events       Event[]
+  subscription Subscription?
+  payments     Payment[]
+
+  @@map("users")
+}
+
+// NextAuth required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Event {
+  id       String          @id @default(cuid())
+  userId   String
+  type     EventType
+  status   EventStatus     @default(DRAFT)
+  slug     String          @unique
+  template TemplateVariant @default(LUXURY_GOLD)
+
+  // Wedding & Traditional
+  personOneName String?
+  personTwoName String?
+  culture       Culture?
+
+  // Birthday
+  celebrantName String?
+  age           Int?
+
+  // Shared
+  eventDate    DateTime
+  eventTime    String
+  venueName    String
+  venueAddress String
+
+  // AI-generated content (stored as JSON)
+  aiContent Json?
+
+  // Theme
+  primaryColor   String?
+  secondaryColor String?
+  headingFont    String?
+  bodyFont       String?
+
+  // Music
+  musicUrl      String?
+  musicCategory String?
+
+  // Gift info
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  paystackLink  String?
+  showGifts     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images       GalleryImage[]
+  rsvps        RSVP[]
+  analytics    Analytics?
+  viewTracking ViewTracking[]
+
+  @@index([userId])
+  @@index([slug])
+  @@map("events")
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  eventId   String
+  url       String
+  publicId  String
+  position  Int
+  isHero    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("gallery_images")
+}
+
+model RSVP {
+  id               String           @id @default(cuid())
+  eventId          String
+  name             String
+  email            String
+  phone            String?
+  attendanceStatus AttendanceStatus @default(PENDING)
+  guestCount       Int              @default(1)
+  message          String?          @db.Text
+  createdAt        DateTime         @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("rsvps")
+}
+
+model Analytics {
+  id             String   @id @default(cuid())
+  eventId        String   @unique
+  totalViews     Int      @default(0)
+  uniqueVisitors Int      @default(0)
+  rsvpCount      Int      @default(0)
+  mobileViews    Int      @default(0)
+  desktopViews   Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("analytics")
+}
+
+model ViewTracking {
+  id         String   @id @default(cuid())
+  eventId    String
+  visitorId  String
+  deviceType String?
+  source     String?
+  createdAt  DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("view_tracking")
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String             @unique
+  plan      SubscriptionPlan   @default(FREE)
+  status    SubscriptionStatus @default(ACTIVE)
+  startDate DateTime           @default(now())
+  endDate   DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  userId         String
+  subscriptionId String?
+  amount         Float
+  currency       String   @default("NGN")
+  reference      String   @unique
+  status         String
+  createdAt      DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@map("payments")
+}
