@@ -7,11 +7,19 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return <div className="p-8">Please <Link href="/login" className="text-[#C5A26F]">sign in</Link> to view your dashboard.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-8">
+        <div className="text-center">
+          <h1 className="font-heading text-3xl">Sign in required</h1>
+          <p className="mt-2 text-[#f5f0e6]/70">Please sign in to access your dashboard.</p>
+          <Link href="/login" className="btn mt-6 inline-flex">Sign in</Link>
+        </div>
+      </div>
+    );
   }
 
   const events = await prisma.event.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id as string },
     take: 10,
     orderBy: { createdAt: 'desc' },
     include: {
