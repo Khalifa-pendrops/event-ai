@@ -27,6 +27,12 @@ export default function CreateEventPage() {
     venueName: '',
     venueAddress: '',
     culture: '' as typeof CULTURES[number] | '',
+    template: 'LUXURY_GOLD' as any,
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
+    paystackLink: '',
+    showGifts: 'false',
   })
   const [photos, setPhotos] = useState<Photo[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -220,6 +226,15 @@ export default function CreateEventPage() {
                     </button>
                   ))}
                 </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm mb-1">Template</label>
+                  <select value={formData.template} onChange={e => updateField('template', e.target.value)} className="w-full">
+                    {['LUXURY_GOLD', 'ELEGANT_WHITE', 'AFRICAN_HERITAGE', 'FLORAL', 'MODERN_MINIMAL', 'BLACK_PREMIUM'].map(t => (
+                      <option key={t} value={t}>{t.replace('_', ' ')}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
 
@@ -327,6 +342,20 @@ export default function CreateEventPage() {
                     className="w-full"
                     required
                   />
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <div className="text-sm font-medium mb-2">Gifts (optional)</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input value={formData.bankName} onChange={e => updateField('bankName', e.target.value)} placeholder="Bank Name" className="w-full" />
+                    <input value={formData.accountNumber} onChange={e => updateField('accountNumber', e.target.value)} placeholder="Account Number" className="w-full" />
+                    <input value={formData.accountName} onChange={e => updateField('accountName', e.target.value)} placeholder="Account Name" className="w-full" />
+                    <input value={formData.paystackLink} onChange={e => updateField('paystackLink', e.target.value)} placeholder="Paystack Link" className="w-full" />
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={formData.showGifts === 'true'} onChange={e => updateField('showGifts', e.target.checked ? 'true' : 'false')} />
+                    <label>Show gifts section on invitation</label>
+                  </div>
                 </div>
               </div>
             )}

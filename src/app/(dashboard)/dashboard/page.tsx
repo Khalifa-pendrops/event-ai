@@ -1,10 +1,17 @@
 import Link from 'next/link';
 import { Plus, Eye, Users } from 'lucide-react';
 import prisma from '@/server/db/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export default async function DashboardPage() {
-  // TODO: replace with real user from session
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return <div className="p-8">Please <Link href="/login" className="text-[#C5A26F]">sign in</Link> to view your dashboard.</div>;
+  }
+
   const events = await prisma.event.findMany({
+    where: { userId: session.user.id },
     take: 10,
     orderBy: { createdAt: 'desc' },
     include: {
@@ -47,6 +54,7 @@ export default async function DashboardPage() {
                         ? `${event.personOneName} & ${event.personTwoName}`
                         : event.celebrantName || 'Untitled Event'}
                     </h3>
+                    <div className="text-xs text-[#f5f0e6]/50">{event.template}</div>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-xs ${event.status === 'PUBLISHED' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
                     {event.status}
@@ -69,6 +77,12 @@ export default async function DashboardPage() {
                   <Link href={`/e/${event.slug}`} className="btn flex-1 text-center text-sm py-2" target="_blank">
                     View
                   </Link>
+                  <form action={async () => {
+                    'use server';
+                    await prisma.event.delete({ where: { id: event.id } });
+                  }}>
+                    <button type="submit" className="text-red-400 text-sm px-2">Delete</button>
+                  </form>
                 </div>
               </div>
             ))}

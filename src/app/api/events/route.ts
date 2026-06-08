@@ -7,11 +7,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
+    const user = await prisma.user.findFirst() || await prisma.user.create({
+      data: { email: 'demo@evently.test', role: 'user' }
+    });
+
     const event = await prisma.event.create({
       data: {
-        userId: 'demo-user-id', // TODO: from session
+        userId: user.id,
         type: body.type,
-        status: 'PUBLISHED', // or DRAFT
+        status: 'PUBLISHED',
         slug: body.slug || `${body.personOneName || body.celebrantName}-${Date.now()}`.toLowerCase().replace(/\s+/g, '-'),
         personOneName: body.personOneName,
         personTwoName: body.personTwoName,
@@ -22,7 +26,13 @@ export async function POST(request: NextRequest) {
         venueName: body.venueName,
         venueAddress: body.venueAddress,
         culture: body.culture,
+        template: body.template || 'LUXURY_GOLD',
         aiContent: body.aiContent,
+        bankName: body.bankName,
+        accountNumber: body.accountNumber,
+        accountName: body.accountName,
+        paystackLink: body.paystackLink,
+        showGifts: body.showGifts === 'true',
         musicUrl: body.music?.url,
         musicCategory: body.music?.category,
         primaryColor: body.aiContent?.primaryColor,
