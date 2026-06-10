@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { MusicPlayer } from "@/components/microsite/MusicPlayer";
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,6 +26,9 @@ interface Photo {
 }
 
 export default function CreateEventPage() {
+  const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     type: "" as (typeof EVENT_TYPES)[number] | "",
@@ -35,6 +41,13 @@ export default function CreateEventPage() {
     venueName: "",
     venueAddress: "",
     culture: "" as (typeof CULTURES)[number] | "",
+    // Gifts + template (collected so they flow to DB via API)
+    template: "LUXURY_GOLD" as string,
+    bankName: "",
+    accountNumber: "",
+    accountName: "",
+    paystackPublicKey: "",   // optional: host's Paystack public key for inline checkout
+    showGifts: "false" as "true" | "false",
   });
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -49,6 +62,10 @@ export default function CreateEventPage() {
     volume: number;
   }>({ category: "", isPlaying: false, volume: 0.7 });
   const [isMusicUploading, setIsMusicUploading] = useState(false);
+
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [showAdvancedGifts, setShowAdvancedGifts] = useState(false);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -141,21 +158,28 @@ export default function CreateEventPage() {
     const res = await fetch("/api/upload", { method: "POST", body: formData });
     const { urls } = await res.json();
 
+    // The upload stub now returns a playable demo MP3 for audio files.
+    // We use that (or local fallback) so the preview player can actually play.
     const url = urls[0]?.url || URL.createObjectURL(file);
-    setMusic({ ...music, url, file });
+    setMusic((prev) => ({
+      ...prev,
+      url,
+      file,
+      isPlaying: false,
+      volume: prev.volume || 0.7,
+    }));
     setIsMusicUploading(false);
   };
 
-  const toggleMusic = () => {
-    setMusic((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
-  };
-
-  const changeVolume = (v: number) => {
-    setMusic((prev) => ({ ...prev, volume: v }));
-  };
-
   const selectMusicCategory = (cat: string) => {
-    setMusic({ category: cat, isPlaying: false, volume: 0.7 });
+    // For the stub/demo: categories also get the demo track so you can preview
+    // the music player immediately (same track as audio "uploads" until real storage).
+    setMusic({
+      category: cat,
+      url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      isPlaying: false,
+      volume: 0.7,
+    });
   };
 
   const generateWithAI = async () => {
@@ -183,46 +207,64 @@ export default function CreateEventPage() {
       setAiContent(data);
       setEditedContent(data);
     } catch (e) {
-      const mock = {
-        headline:
-          formData.type === "WEDDING"
-            ? `${formData.personOneName} & ${formData.personTwoName}`
-            : formData.celebrantName || "Celebration",
-        tagline: "With hearts full of joy",
-        invitationBody:
-          "You are cordially invited to celebrate with us on this special day.",
-        story:
-          formData.type !== "BIRTHDAY"
-            ? "Our journey began with a chance meeting and grew into a lifetime of love."
-            : undefined,
-        primaryColor: "#C5A26F",
-        secondaryColor: "#0a0a0a",
-        headingFont: "Cormorant Garamond",
-        bodyFont: "Inter",
-      };
-      setAiContent(mock);
-      setEditedContent(mock);
+      // Client fallback mirrors the improved server stub (type-appropriate copy)
+      const name = formData.celebrantName || formData.personOneName || "the celebrant"
+      const agePart = formData.age ? ` ${formData.age}` : ""
+      const weddingNames = formData.personOneName && formData.personTwoName 
+        ? `${formData.personOneName} & ${formData.personTwoName}` 
+        : "the couple"
+
+      const mock = formData.type === "BIRTHDAY"
+        ? {
+            headline: `${name}'s${agePart} Birthday`,
+            tagline: "Another year, another adventure",
+            invitationBody: `Join us as we celebrate ${name}'s special day with laughter, cake, and good company.`,
+            story: undefined,
+            primaryColor: "#C5A26F",
+            secondaryColor: "#0a0a0a",
+            headingFont: "Cormorant Garamond",
+            bodyFont: "Inter",
+          }
+        : {
+            headline: weddingNames,
+            tagline: formData.type === "TRADITIONAL_MARRIAGE" && formData.culture === "IGBO" 
+              ? "Nna anyi na nne anyi" 
+              : "With hearts full of joy",
+            invitationBody: formData.type === "TRADITIONAL_MARRIAGE" && formData.culture
+              ? `Join us in celebrating the sacred union according to ${formData.culture} tradition.`
+              : "You are cordially invited to share in our celebration of love and new beginnings.",
+            story: "Our paths crossed by fate, and love blossomed into this beautiful journey we now embark upon together.",
+            primaryColor: "#C5A26F",
+            secondaryColor: "#0a0a0a",
+            headingFont: "Cormorant Garamond",
+            bodyFont: "Inter",
+          }
+
+      setAiContent(mock)
+      setEditedContent(mock)
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const slug =
-      (formData.personOneName || formData.celebrantName || "event")
-        .toLowerCase()
-        .replace(/\s+/g, "-") +
-      "-" +
-      Date.now();
+  // Single source of truth for publishing (deduped from previous inline + handleSubmit)
+  const publishEvent = async () => {
+    if (isPublishing) return;
+    setIsPublishing(true);
+    setPublishError(null);
+
     const finalContent = editedContent || aiContent;
 
+    // Include isHero + preview for gallery save. (Current upload stub still returns demo URLs.)
     const payload = {
       ...formData,
-      photos: photos.map((p) => ({ preview: p.preview, publicId: "demo" })),
+      photos: photos.map((p) => ({
+        preview: p.preview,
+        publicId: "demo",
+        isHero: p.isHero,
+      })),
       aiContent: finalContent,
       music,
-      slug,
     };
 
     try {
@@ -231,14 +273,28 @@ export default function CreateEventPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const { id, slug: savedSlug } = await res.json();
-      alert(`Published! Event ID: ${id}\nSlug: ${savedSlug}`);
-      window.location.href = `/e/${savedSlug}`;
-    } catch (e) {
-      alert("Publish stub - would save to DB and redirect. Check console.");
-      console.log("Publish payload:", payload);
-      window.location.href = `/e/${slug}`;
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to publish");
+      }
+
+      const savedSlug = data.slug;
+      // Success: navigate to the live microsite (real user now owns it via session)
+      router.push(`/e/${savedSlug}`);
+    } catch (e: any) {
+      const msg = e?.message || "Publish failed. Please try again.";
+      setPublishError(msg);
+      console.error("Publish error:", e);
+    } finally {
+      setIsPublishing(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await publishEvent();
   };
 
   return (
@@ -251,10 +307,21 @@ export default function CreateEventPage() {
           <ArrowLeft className="h-4 w-4" /> Back to dashboard
         </Link>
 
-        <h1 className="mt-6 font-heading text-4xl tracking-tight">
-          Create new event
-        </h1>
-        <p className="mt-1 text-[#f5f0e6]/70">Step {step} of 7</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-heading text-4xl tracking-tight">Create new event</h1>
+            <p className="mt-1 text-sm text-[#f5f0e6]/60 tracking-wider">STEP {step} OF 7</p>
+          </div>
+          
+          <div className="hidden sm:flex items-center gap-1.5">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div 
+                key={i} 
+                className={`h-1 w-6 rounded-full transition-all ${i + 1 <= step ? 'bg-[#C5A26F]' : 'bg-white/10'}`} 
+              />
+            ))}
+          </div>
+        </div>
 
         <div className="mt-8 card">
           <form onSubmit={handleSubmit}>
@@ -274,6 +341,28 @@ export default function CreateEventPage() {
                       </div>
                     </button>
                   ))}
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm mb-1">Template</label>
+                  <select
+                    value={formData.template}
+                    onChange={(e) => updateField("template", e.target.value)}
+                    className="w-full"
+                  >
+                    {[
+                      "LUXURY_GOLD",
+                      "ELEGANT_WHITE",
+                      "AFRICAN_HERITAGE",
+                      "FLORAL",
+                      "MODERN_MINIMAL",
+                      "BLACK_PREMIUM",
+                    ].map((t) => (
+                      <option key={t} value={t}>
+                        {t.replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
@@ -403,6 +492,68 @@ export default function CreateEventPage() {
                     className="w-full"
                     required
                   />
+                </div>
+
+                {/* Gifts section - now collected so it persists to Event + shows on microsite when enabled */}
+                <div className="pt-4 border-t border-white/10">
+                  <div className="text-sm font-medium mb-2">Gifts (optional)</div>
+                  <p className="text-xs text-[#f5f0e6]/60 mb-3">
+                    Let guests know they can send a monetary gift if they wish. Bank details are shown on the invitation.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      value={formData.bankName}
+                      onChange={(e) => updateField("bankName", e.target.value)}
+                      placeholder="Bank Name"
+                      className="w-full"
+                    />
+                    <input
+                      value={formData.accountNumber}
+                      onChange={(e) => updateField("accountNumber", e.target.value)}
+                      placeholder="Account Number"
+                      className="w-full"
+                    />
+                    <input
+                      value={formData.accountName}
+                      onChange={(e) => updateField("accountName", e.target.value)}
+                      placeholder="Account Name"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedGifts(!showAdvancedGifts)}
+                    className="text-xs text-[#C5A26F] hover:underline mt-2 mb-1"
+                  >
+                    {showAdvancedGifts ? '− Hide' : '+ Show'} advanced: Paystack direct checkout
+                  </button>
+
+                  {showAdvancedGifts && (
+                    <div className="space-y-1">
+                      <input
+                        value={formData.paystackPublicKey}
+                        onChange={(e) => updateField("paystackPublicKey", e.target.value)}
+                        placeholder="pk_live_xxxxxxxxxxxxxxxx (optional)"
+                        className="w-full"
+                      />
+                      <p className="text-[10px] text-[#f5f0e6]/50">
+                        Paste your Paystack public key (pk_...) to enable guests to pay directly via card, bank transfer, USSD etc. using Paystack's checkout.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={formData.showGifts === "true"}
+                      onChange={(e) =>
+                        updateField("showGifts", e.target.checked ? "true" : "false")
+                      }
+                    />
+                    <label>Show gifts section on the invitation</label>
+                  </div>
                 </div>
               </div>
             )}
@@ -745,37 +896,13 @@ export default function CreateEventPage() {
                 </div>
 
                 {music.url && (
-                  <div className="mt-6 p-4 bg-[#111] rounded">
-                    <audio
-                      src={music.url}
-                      autoPlay={music.isPlaying}
-                      loop
-                      muted={!music.isPlaying}
-                      style={{ width: "100%" }}
+                  <div className="mt-4">
+                    {/* Reusing the production MusicPlayer component (with proper ref + play/pause/volume control)
+                        so the uploaded (or stub) audio actually plays when you press the button. */}
+                    <MusicPlayer
+                      url={music.url}
+                      category={music.category || music.file?.name}
                     />
-                    <div className="flex items-center gap-4 mt-2">
-                      <button
-                        type="button"
-                        onClick={toggleMusic}
-                        className="btn px-4 py-1 text-sm"
-                      >
-                        {music.isPlaying ? "Pause" : "Play"}
-                      </button>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={music.volume}
-                        onChange={(e) =>
-                          changeVolume(parseFloat(e.target.value))
-                        }
-                        className="w-32"
-                      />
-                      <span className="text-xs">
-                        Vol: {Math.round(music.volume * 100)}%
-                      </span>
-                    </div>
                   </div>
                 )}
               </div>
@@ -821,58 +948,33 @@ export default function CreateEventPage() {
                       <strong>Music:</strong> {music.category}
                     </div>
                   )}
+                  {formData.showGifts === "true" && (formData.bankName || formData.paystackPublicKey) && (
+                    <div>
+                      <strong>Gifts:</strong> enabled
+                    </div>
+                  )}
+                  <div className="text-xs text-[#f5f0e6]/60">
+                    Template: {formData.template.replace(/_/g, " ")}
+                  </div>
                 </div>
+
+                {publishError && (
+                  <p className="text-red-400 text-sm mb-3">{publishError}</p>
+                )}
 
                 <button
                   type="button"
-                  onClick={async () => {
-                    const slug =
-                      (
-                        formData.personOneName ||
-                        formData.celebrantName ||
-                        "event"
-                      )
-                        .toLowerCase()
-                        .replace(/\s+/g, "-") +
-                      "-" +
-                      Date.now();
-
-                    const finalContent = editedContent || aiContent;
-
-                    const payload = {
-                      ...formData,
-                      photos: photos.map((p) => ({
-                        preview: p.preview,
-                        publicId: "demo",
-                      })),
-                      aiContent: finalContent,
-                      music,
-                      slug,
-                    };
-
-                    try {
-                      const res = await fetch("/api/events", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                      });
-                      const { id, slug: savedSlug } = await res.json();
-                      alert(
-                        `Published! Event ID: ${id}\nSlug: ${savedSlug}\n\nShare link: /e/${savedSlug}`,
-                      );
-                      window.location.href = `/e/${savedSlug}`;
-                    } catch (e) {
-                      alert(
-                        "Publish stub - would save to DB and redirect. Check console.",
-                      );
-                      console.log("Publish payload:", payload);
-                      window.location.href = `/e/${slug}`;
-                    }
-                  }}
-                  className="btn w-full py-4 text-base"
+                  onClick={publishEvent}
+                  disabled={isPublishing || !session}
+                  className="btn w-full py-4 text-base disabled:opacity-60"
                 >
-                  Publish & Get Link / QR
+                  {isPublishing ? "Publishing..." : "Publish & Get Link / QR"}
                 </button>
+                {!session && (
+                  <p className="text-xs text-[#f5f0e6]/60 mt-2 text-center">
+                    Sign in required to publish. (You should be authenticated via dashboard.)
+                  </p>
+                )}
               </div>
             )}
 
@@ -882,6 +984,7 @@ export default function CreateEventPage() {
                   type="button"
                   onClick={prevStep}
                   className="btn-outline px-6 py-2"
+                  disabled={isPublishing}
                 >
                   Back
                 </button>
@@ -891,13 +994,17 @@ export default function CreateEventPage() {
                   type="button"
                   onClick={nextStep}
                   className="btn px-6 py-2 ml-auto"
-                  disabled={step === 3 && photos.length === 0}
+                  disabled={step === 3 && photos.length === 0 || isPublishing}
                 >
                   Continue
                 </button>
               ) : (
-                <button type="submit" className="btn px-6 py-2 ml-auto">
-                  Publish Event
+                <button
+                  type="submit"
+                  className="btn px-6 py-2 ml-auto"
+                  disabled={isPublishing || !session}
+                >
+                  {isPublishing ? "Publishing..." : "Publish Event"}
                 </button>
               )}
             </div>
@@ -905,8 +1012,7 @@ export default function CreateEventPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-[#f5f0e6]/50">
-          Create event page with form steps for event type, details, photo
-          upload, AI generation, editing, music selection, and publish.
+          7-step creation flow. Authenticated sessions now own events end-to-end.
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -53,6 +54,16 @@ const faqs = [
 ];
 
 export default function Home() {
+  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaqs(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#f5f0e6]">
       {/* Hero */}
@@ -106,10 +117,14 @@ export default function Home() {
               <motion.div
                 key={i}
                 className="card"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                viewport={{ once: true }}
+                initial={{ opacity: 0, y: 50, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  duration: 0.7, 
+                  ease: [0.21, 0.92, 0.2, 1], 
+                  delay: i * 0.12 
+                }}
+                viewport={{ once: true, margin: "-80px" }}
               >
                 <div className="text-4xl font-heading text-[#C5A26F]">{item.step}</div>
                 <h3 className="mt-4 text-2xl font-medium">{item.title}</h3>
@@ -137,7 +152,7 @@ export default function Home() {
       </section>
 
       {/* Templates */}
-      <section className="border-t border-white/10 py-20">
+      <section id="templates" className="border-t border-white/10 py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="text-center">
             <p className="text-sm uppercase tracking-[2px] text-[#C5A26F]">Six signature styles</p>
@@ -175,7 +190,7 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="border-t border-white/10 py-20">
+      <section id="pricing" className="border-t border-white/10 py-20">
         <div className="mx-auto max-w-4xl px-6">
           <div className="text-center">
             <p className="text-sm uppercase tracking-[2px] text-[#C5A26F]">Simple pricing</p>
@@ -218,16 +233,40 @@ export default function Home() {
       <section className="border-t border-white/10 py-20">
         <div className="mx-auto max-w-3xl px-6">
           <h2 className="font-heading text-center text-5xl tracking-tight">Frequently asked questions</h2>
-          <div className="mt-10 space-y-4">
-            {faqs.map((faq, i) => (
-              <details key={i} className="group rounded-xl border border-white/10 bg-[#161616] p-6 open:border-[#C5A26F]/40">
-                <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-medium">
-                  {faq.q}
-                  <span className="ml-4 text-[#C5A26F] transition group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-4 text-[#f5f0e6]/75">{faq.a}</p>
-              </details>
-            ))}
+          <div className="mt-10 space-y-3">
+            {faqs.map((faq, i) => {
+              const isOpen = openFaqs.includes(i);
+              return (
+                <div
+                  key={i}
+                  className={`rounded-2xl border bg-[#161616] p-6 transition-colors ${isOpen ? 'border-[#C5A26F]/40' : 'border-white/10'}`}
+                >
+                  <button
+                    onClick={() => toggleFaq(i)}
+                    className="flex w-full items-center justify-between text-left text-lg font-medium"
+                  >
+                    <span>{faq.q}</span>
+                    <motion.span
+                      animate={{ rotate: isOpen ? 45 : 0 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="ml-4 flex h-6 w-6 flex-shrink-0 items-center justify-center text-[#C5A26F] text-xl leading-none"
+                    >
+                      +
+                    </motion.span>
+                  </button>
+                  <motion.div
+                    initial={false}
+                    animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-4 text-[#f5f0e6]/75">
+                      {faq.a}
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

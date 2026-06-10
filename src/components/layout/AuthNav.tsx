@@ -13,11 +13,18 @@ export default function AuthNav() {
   if (session?.user) {
     return (
       <div className="flex items-center gap-4 text-sm">
-        <span className="text-[#f5f0e6]/70">{session.user.email}</span>
-        <Link href="/dashboard" className="hover:text-[#C5A26F]">Dashboard</Link>
+        <span className="hidden md:inline text-[#f5f0e6]/60 text-xs tracking-wide truncate max-w-[160px]">
+          {session.user.name || session.user.email?.split('@')[0]}
+        </span>
+        <Link 
+          href="/dashboard" 
+          className="px-4 py-1.5 rounded-full border border-white/20 hover:border-[#C5A26F]/60 hover:text-[#C5A26F] transition-all text-sm"
+        >
+          Dashboard
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: '/' })}
-          className="text-[#C5A26F] hover:underline"
+          className="text-xs text-[#f5f0e6]/60 hover:text-[#C5A26F] tracking-wider uppercase"
         >
           Sign out
         </button>
@@ -26,9 +33,19 @@ export default function AuthNav() {
   }
 
   return (
-    <div className="flex items-center gap-4 text-sm">
-      <Link href="/login" className="hover:text-[#C5A26F]">Sign in</Link>
-      <Link href="/register" className="btn text-sm px-4 py-1">Sign up</Link>
+    <div className="flex items-center gap-3 text-sm">
+      <Link 
+        href="/login" 
+        className="px-5 py-2 rounded-full text-[#f5f0e6]/80 hover:text-white transition-colors tracking-wide"
+      >
+        Log in
+      </Link>
+      <Link 
+        href="/register" 
+        className="btn text-sm px-6 py-2 rounded-full"
+      >
+        Get started
+      </Link>
     </div>
   );
 }

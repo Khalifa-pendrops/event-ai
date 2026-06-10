@@ -141,6 +141,7 @@ model Event {
   eventTime    String
   venueName    String
   venueAddress String
+  mapImage     String?
 
   // AI-generated content (stored as JSON)
   aiContent Json?
@@ -159,8 +160,9 @@ model Event {
   bankName      String?
   accountNumber String?
   accountName   String?
-  paystackLink  String?
-  showGifts     Boolean @default(false)
+  paystackLink      String?   // legacy (pre-filled Paystack payment page links)
+  paystackPublicKey String?   // for inline checkout (recommended for direct payments)
+  showGifts         Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

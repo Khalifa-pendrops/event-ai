@@ -44,9 +44,13 @@ export default async function DashboardPage() {
         </div>
 
         {events.length === 0 ? (
-          <div className="mt-12 card text-center">
-            <p className="text-[#f5f0e6]/70">You haven&apos;t created any events yet.</p>
-            <Link href="/dashboard/events/create" className="btn mt-6 inline-flex">
+          <div className="mt-12 card text-center py-12">
+            <div className="mx-auto w-12 h-12 rounded-full bg-[#C5A26F]/10 flex items-center justify-center mb-4">
+              <span className="text-[#C5A26F] text-xl">✧</span>
+            </div>
+            <p className="text-[#f5f0e6]/70 text-lg">You haven&apos;t created any events yet.</p>
+            <p className="text-sm text-[#f5f0e6]/50 mt-1 mb-6">Your first beautiful invitation is just a few steps away.</p>
+            <Link href="/dashboard/events/create" className="btn inline-flex">
               Create your first invitation
             </Link>
           </div>

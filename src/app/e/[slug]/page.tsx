@@ -1,10 +1,13 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import prisma from '@/server/db/prisma';
 import { MusicPlayer } from '@/components/microsite/MusicPlayer';
 import { RsvpForm } from '@/components/microsite/RsvpForm';
 import { Countdown } from '@/components/microsite/Countdown';
 import { Gallery } from '@/components/microsite/Gallery';
-import { motion } from 'framer-motion';
+import { AnimatedHero } from '@/components/microsite/AnimatedHero';
+import { PaystackGift } from '@/components/microsite/PaystackGift';
+import { FloatingBubbles } from '@/components/microsite/FloatingBubbles';
 
 export default async function MicrositePage({
   params,
@@ -36,6 +39,13 @@ export default async function MicrositePage({
     ? `${event.personOneName} & ${event.personTwoName}` 
     : event.celebrantName;
 
+  const dateDisplay = new Date(event.eventDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   const rsvpCount = event.rsvps.length;
   const attending = event.rsvps.filter(r => r.attendanceStatus === 'ATTENDING').length;
 
@@ -45,31 +55,32 @@ export default async function MicrositePage({
       <section className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-6 text-center">
         <div className="absolute inset-0 bg-[radial-gradient(var(--primary)_0.6px,transparent_1px)] bg-[length:4px_4px] opacity-10" />
         
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-10 max-w-3xl"
-        >
-          <p className="mb-4 text-sm tracking-[4px] text-[var(--primary)]">YOU ARE INVITED</p>
-          <h1 className="font-heading text-7xl tracking-[-2px] md:text-8xl" style={{ fontFamily: headingFont }}>
-            {names}
-          </h1>
-          <p className="mt-6 text-xl text-[#f5f0e6]/80">{new Date(event.eventDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
-          <p className="text-[#f5f0e6]/60">{event.eventTime} • {event.venueName}</p>
+        {/* Clean, elegant floating bubble animations behind the hero text.
+            Inspired by premium sites like Antigravity — soft gold orbs rising gently
+            with organic movement and subtle glow. Very low opacity so the text remains crisp. */}
+        <FloatingBubbles />
 
-          <div className="mt-10">
-            <a href="#invitation" className="btn inline-flex px-8 py-3 text-sm">Open Invitation</a>
-          </div>
-        </motion.div>
+        <AnimatedHero
+          names={names}
+          dateDisplay={dateDisplay}
+          eventTime={event.eventTime}
+          venueName={event.venueName}
+          headingFont={headingFont}
+        />
 
         <div className="absolute bottom-8 text-[10px] tracking-[2px] text-[#f5f0e6]/40">SCROLL TO BEGIN</div>
       </section>
 
       {/* Invitation */}
-      <section id="invitation" className="border-t border-white/10 py-16">
+      <section id="invitation" className="border-t border-white/10 py-20 md:py-24">
         <div className="mx-auto max-w-2xl px-6 text-center">
-          <div className="mx-auto mb-8 h-px w-16 bg-[var(--primary)]/60" />
+          {/* Elegant high-end transition divider */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="h-px w-8 bg-[var(--primary)]/40" />
+            <div className="text-[9px] tracking-[4px] text-[var(--primary)]/60">THE INVITATION</div>
+            <div className="h-px w-8 bg-[var(--primary)]/40" />
+          </div>
+
           <p className="font-heading text-2xl leading-relaxed tracking-tight" style={{ fontFamily: headingFont }}>
             {ai.invitationBody || 'You are cordially invited to celebrate this special occasion with us.'}
           </p>
@@ -95,9 +106,23 @@ export default async function MicrositePage({
         </section>
       )}
 
-      {/* Details */}
-      <section className="border-t border-white/10 py-16">
-        <div className="mx-auto max-w-xl px-6 text-center">
+      {/* Details - system-built-in clean map background (like the bubbles).
+          Live Google Maps embed sits fully behind the text. No user-provided image needed.
+          Dark overlay ensures text readability. */}
+      <section className="relative border-t border-white/10 py-12 md:py-16 min-h-[50vh] md:min-h-[55vh] flex items-center overflow-hidden">
+        {/* Full-cover live map as background - automatic from venueAddress */}
+        <iframe
+          src={`https://www.google.com/maps?q=${encodeURIComponent(event.venueAddress)}&output=embed`}
+          className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-60 grayscale-[0.2] brightness-75"
+          style={{ border: 0 }}
+          loading="lazy"
+          title="Venue location map"
+        />
+
+        {/* Overlay for text contrast and elegant look */}
+        <div className="absolute inset-0 bg-[#0a0a0a]/75 z-10" />
+
+        <div className="relative z-20 mx-auto max-w-xl px-6 text-center">
           <h2 className="font-heading text-4xl tracking-tight mb-8" style={{ fontFamily: headingFont }}>When &amp; Where</h2>
           <div className="space-y-8 text-lg">
             <div>
@@ -109,7 +134,13 @@ export default async function MicrositePage({
               <div>{event.venueName}<br />{event.venueAddress}</div>
             </div>
           </div>
-          <a href={`https://maps.google.com/?q=${encodeURIComponent(event.venueAddress)}`} target="_blank" className="btn mt-10 inline-flex px-8 py-3 text-sm">View on Google Maps</a>
+          <a 
+            href={`https://maps.google.com/?q=${encodeURIComponent(event.venueAddress)}`} 
+            target="_blank" 
+            className="btn mt-8 inline-flex px-8 py-3 text-sm"
+          >
+            View on Google Maps
+          </a>
         </div>
       </section>
 
@@ -124,20 +155,46 @@ export default async function MicrositePage({
       )}
 
       {/* Gifts */}
-      {event.showGifts && (event.bankName || event.paystackLink) && (
+      {event.showGifts && (
         <section className="border-t border-white/10 py-16">
           <div className="mx-auto max-w-md px-6 text-center">
-            <h2 className="font-heading text-4xl tracking-tight mb-6" style={{ fontFamily: headingFont }}>Gifts</h2>
+            <h2 className="font-heading text-4xl tracking-tight mb-3" style={{ fontFamily: headingFont }}>Gifts</h2>
+            <p className="text-[#f5f0e6]/70 mb-6 text-sm">
+              If you would like to send a monetary gift, you can do so using the details below.
+            </p>
+
             {event.bankName && (
-              <div className="card mb-4 text-left">
-                <div className="text-sm text-[var(--primary)]">BANK TRANSFER</div>
-                <div className="mt-2">{event.bankName}</div>
-                <div>{event.accountName}</div>
-                <div className="font-mono">{event.accountNumber}</div>
+              <div className="card mb-4 text-left border-l-2 border-[var(--primary)] pl-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-px flex-1 bg-[var(--primary)]/30" />
+                  <div className="text-[10px] tracking-[2px] text-[var(--primary)]">BANK TRANSFER</div>
+                  <div className="h-px flex-1 bg-[var(--primary)]/30" />
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <div className="text-[10px] tracking-widest text-[#f5f0e6]/50">BANK</div>
+                    <div className="font-medium tracking-wide">{event.bankName}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] tracking-widest text-[#f5f0e6]/50">ACCOUNT NAME</div>
+                    <div>{event.accountName}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] tracking-widest text-[#f5f0e6]/50">ACCOUNT NUMBER</div>
+                    <div className="font-mono tracking-[1.5px] text-base">{event.accountNumber}</div>
+                  </div>
+                </div>
               </div>
             )}
-            {event.paystackLink && (
-              <a href={event.paystackLink} target="_blank" className="btn w-full">Send Gift via Paystack</a>
+
+            {event.paystackPublicKey && (
+              <PaystackGift publicKey={event.paystackPublicKey} />
+            )}
+
+            {!event.bankName && !event.paystackPublicKey && (
+              <p className="text-sm text-[#f5f0e6]/60">
+                The hosts have enabled gifts. Please ask them directly for details.
+              </p>
             )}
           </div>
         </section>
@@ -152,15 +209,26 @@ export default async function MicrositePage({
         </div>
       </section>
 
-      {/* Music */}
+      {/* Music - autoplays on load, minimal hidden control (small icon in corner).
+          The invitee sees the subtle indicator while music plays in background. */}
       {event.musicUrl && (
         <div className="fixed bottom-4 right-4 z-50">
-          <MusicPlayer url={event.musicUrl} category={event.musicCategory} />
+          <MusicPlayer 
+            url={event.musicUrl} 
+            category={event.musicCategory} 
+            autoPlay={true} 
+            compact={true} 
+          />
         </div>
       )}
 
-      <footer className="border-t border-white/10 py-8 text-center text-xs text-[#f5f0e6]/50">
-        <Link href="/" className="hover:text-[var(--primary)]">Evently AI</Link> • Made with love
+      <footer className="border-t border-white/10 py-10 text-center text-xs tracking-[1.5px] text-[#f5f0e6]/50">
+        <div className="flex flex-col items-center gap-1">
+          <div>
+            <Link href="/" className="font-medium text-[#C5A26F] hover:text-white transition-colors">Evently AI</Link>
+          </div>
+          <div className="text-[#f5f0e6]/40">Your story, beautifully told.</div>
+        </div>
       </footer>
     </div>
   );
