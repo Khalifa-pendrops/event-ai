@@ -22,11 +22,21 @@ export default async function DashboardPage() {
     where: { userId: session.user.id as string },
     take: 10,
     orderBy: { createdAt: 'desc' },
-    include: {
+    // Explicit select so we only pull columns we actually render (avoids pulling
+    // any removed/drifted columns like the old mapImage, and is more efficient).
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      slug: true,
+      personOneName: true,
+      personTwoName: true,
+      celebrantName: true,
+      template: true,
+      analytics: true,
       _count: {
         select: { rsvps: true },
       },
-      analytics: true,
     },
   });
 

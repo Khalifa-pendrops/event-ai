@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { v2 as cloudinary } from 'cloudinary'
 
-// Stub upload API. In production, integrate with Cloudinary as per PRD.
-// For now, returns demo image URLs (replace with real upload later).
+// Configure Cloudinary from env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const files = formData.getAll('files') as File[]
@@ -10,23 +16,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No files' }, { status: 400 })
   }
 
-  // Simulate upload delay and return public demo URLs
-  // Real impl: upload to Cloudinary (or S3), return secure_url and public_id.
-  // For audio files we return a reliable public demo track so the music preview + published
-  // microsite can actually play something (until real per-file audio storage).
-  const urls = files.map((file, i) => {
-    const isAudio = file.type?.startsWith('audio/')
-    if (isAudio) {
-      return {
-        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-        publicId: `demo-audio-${Date.now()}-${i}`,
-      }
-    }
-    return {
-      url: `https://picsum.photos/id/${(i % 10) + 10}/800/600`,
-      publicId: `demo-${Date.now()}-${i}`,
-    }
-  })
+  try {
+    const uploadPromises = files.map(async (file, i) => {
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
 
-  return NextResponse.json({ urls })
+      const isAudio = file.type?.startsWith('audio/')
+
+      return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
+        const uploadOptions: any = {
+          folder: isAudio ? 'evently/music' : 'evently/photos',
+          resource_type: isAudio ? 'video' : 'image', // video works well for audio files too
+        }
+
+        cloudinary.uploader.upload_stream(
+          uploadOptions,
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error)
+              reject(error)
+            } else if (result) {
+              resolve({
+                url: result.secure_url,
+                publicId: result.public_id,
+              })
+            } else {
+              reject(new Error('No result from Cloudinary'))
+            }
+          }
+        ).end(buffer)
+      })
+    })
+
+    const urls = await Promise.all(uploadPromises)
+
+    return NextResponse.json({ urls })
+  } catch (error) {
+    console.error('Upload failed:', error)
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+  }
 }

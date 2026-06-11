@@ -21,7 +21,16 @@ export default async function AdminPage() {
   const recentEvents = await prisma.event.findMany({
     take: 5,
     orderBy: { createdAt: 'desc' },
-    include: { user: true },
+    // Explicit select (defensive against any schema drift + only loads what's rendered)
+    select: {
+      id: true,
+      personOneName: true,
+      personTwoName: true,
+      celebrantName: true,
+      status: true,
+      slug: true,
+      user: { select: { email: true } },
+    },
   });
 
   const recentRsvps = await prisma.rSVP.findMany({

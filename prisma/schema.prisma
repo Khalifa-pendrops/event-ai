@@ -6,8 +6,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Use the direct (non-pooled) connection for schema operations.
+  // Your DATABASE_URL points at Supabase's transaction pooler (port 6543 + pgbouncer=true),
+  // which does not support DDL (CREATE/ALTER/DROP). DIRECT_URL (port 5432) does.
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── ENUMS ────────────────────────────────────────────────
@@ -141,7 +145,6 @@ model Event {
   eventTime    String
   venueName    String
   venueAddress String
-  mapImage     String?
 
   // AI-generated content (stored as JSON)
   aiContent Json?

@@ -23,6 +23,7 @@ interface Photo {
   file: File;
   preview: string;
   isHero: boolean;
+  publicId?: string;
 }
 
 export default function CreateEventPage() {
@@ -135,19 +136,28 @@ export default function CreateEventPage() {
     e.target.value = "";
   };
 
-  const uploadPhotos = async () => {
-    if (!photos.length) return;
+  const uploadPhotos = async (): Promise<Photo[]> => {
+    if (!photos.length) return photos;
     const formData = new FormData();
     photos.forEach((p) => formData.append("files", p.file));
 
     const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const { urls } = await res.json();
+    const data = await res.json();
 
+    if (!res.ok || !Array.isArray(data.urls)) {
+      console.error("Photo upload failed", data);
+      alert("Photo upload failed. Keeping local previews for now.");
+      return photos;
+    }
+
+    const { urls } = data;
     const updated = photos.map((p, i) => ({
       ...p,
       preview: urls[i]?.url || p.preview,
+      publicId: urls[i]?.publicId || p.publicId,
     }));
     setPhotos(updated);
+    return updated;
   };
 
   const uploadMusic = async (file: File) => {
@@ -156,11 +166,17 @@ export default function CreateEventPage() {
     formData.append("files", file);
 
     const res = await fetch("/api/upload", { method: "POST", body: formData });
-    const { urls } = await res.json();
+    const data = await res.json();
 
-    // The upload stub now returns a playable demo MP3 for audio files.
+    // Real Cloudinary upload returns playable audio URLs.
     // We use that (or local fallback) so the preview player can actually play.
-    const url = urls[0]?.url || URL.createObjectURL(file);
+    let url = URL.createObjectURL(file);
+    if (res.ok && Array.isArray(data.urls) && data.urls[0]?.url) {
+      url = data.urls[0].url;
+    } else if (!res.ok) {
+      console.error("Music upload failed", data);
+    }
+
     setMusic((prev) => ({
       ...prev,
       url,
@@ -172,7 +188,7 @@ export default function CreateEventPage() {
   };
 
   const selectMusicCategory = (cat: string) => {
-    // For the stub/demo: categories also get the demo track so you can preview
+    // Categories provide a demo track for preview (real uploads go to Cloudinary)
     // the music player immediately (same track as audio "uploads" until real storage).
     setMusic({
       category: cat,
@@ -207,7 +223,7 @@ export default function CreateEventPage() {
       setAiContent(data);
       setEditedContent(data);
     } catch (e) {
-      // Client fallback mirrors the improved server stub (type-appropriate copy)
+      // Client fallback mirrors the improved server AI (type-appropriate copy)
       const name = formData.celebrantName || formData.personOneName || "the celebrant"
       const agePart = formData.age ? ` ${formData.age}` : ""
       const weddingNames = formData.personOneName && formData.personTwoName 
@@ -253,14 +269,54 @@ export default function CreateEventPage() {
     setIsPublishing(true);
     setPublishError(null);
 
+    // Client-side validation for required fields (the multi-step form can bypass HTML required)
+    if (!formData.type || !formData.eventDate || !formData.eventTime || !formData.venueName || !formData.venueAddress) {
+      setPublishError('Missing required fields (type, date, time, venue name and address are required)');
+      setIsPublishing(false);
+      return;
+    }
+
+    // Stronger name + culture validation (prevents incomplete events; names are nullable in DB but UX requires them)
+    if (formData.type === 'BIRTHDAY') {
+      if (!formData.celebrantName?.trim()) {
+        setPublishError('Celebrant name is required for birthday events');
+        setIsPublishing(false);
+        return;
+      }
+    } else {
+      if (!formData.personOneName?.trim()) {
+        setPublishError('Person One name is required');
+        setIsPublishing(false);
+        return;
+      }
+    }
+    if (formData.type === 'TRADITIONAL_MARRIAGE' && !formData.culture) {
+      setPublishError('Culture is required for Traditional Marriage events');
+      setIsPublishing(false);
+      return;
+    }
+
+    // If photos are still local blobs (user didn't hit "Upload & Prepare" or it was partial), auto-upload now so the published invitation always has real hosted image URLs.
+    let photosForPayload = photos;
+    if (photos.length > 0 && photos.some((p) => p.preview?.startsWith('blob:'))) {
+      const uploaded = await uploadPhotos();
+      photosForPayload = uploaded;
+      // If still has blobs after attempt, surface (upload failed or no cloudinary keys)
+      if (photosForPayload.some((p) => p.preview?.startsWith('blob:'))) {
+        setPublishError('Some photos failed to upload to storage. Use the "Upload & Prepare Photos" button on the Photo step, or remove the photos to publish without images.');
+        setIsPublishing(false);
+        return;
+      }
+    }
+
     const finalContent = editedContent || aiContent;
 
-    // Include isHero + preview for gallery save. (Current upload stub still returns demo URLs.)
+    // Include isHero + preview (and real publicId when available from Cloudinary) for gallery save.
     const payload = {
       ...formData,
-      photos: photos.map((p) => ({
+      photos: photosForPayload.map((p) => ({
         preview: p.preview,
-        publicId: "demo",
+        publicId: p.publicId || "demo",
         isHero: p.isHero,
       })),
       aiContent: finalContent,
@@ -737,7 +793,7 @@ export default function CreateEventPage() {
                 <h2 className="text-2xl font-medium mb-4">Live Editor</h2>
                 <p className="text-sm text-[#f5f0e6]/70 mb-4">
                   Edit the generated content live. Changes update the preview
-                  instantly (stub preview below).
+                  instantly.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1012,7 +1068,7 @@ export default function CreateEventPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-[#f5f0e6]/50">
-          7-step creation flow. Authenticated sessions now own events end-to-end.
+          7-step creation flow with real AI, Cloudinary uploads, and Paystack.
         </p>
       </div>
     </div>
