@@ -75,6 +75,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Ensure analytics record exists (for view tracking)
+    await prisma.analytics.upsert({
+      where: { eventId: event.id },
+      create: { eventId: event.id },
+      update: {},
+    })
+
     return NextResponse.json({ id: event.id, slug: event.slug })
   } catch (e: any) {
     console.error('Event create error:', e)

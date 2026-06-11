@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { cookies, headers } from 'next/headers';
+import { randomUUID } from 'crypto';
 import prisma from '@/server/db/prisma';
 import { MusicPlayer } from '@/components/microsite/MusicPlayer';
 import { RsvpForm } from '@/components/microsite/RsvpForm';
@@ -26,6 +28,67 @@ export default async function MicrositePage({
 
   if (!event) {
     notFound();
+  }
+
+  // --- View tracking with deduping ---
+  // Middleware sets the 'evly_visitor' cookie if missing.
+  // We only create a ViewTracking record (and increment analytics) on the *first* visit
+  // by this visitor for this event. Subsequent opens by the same browser are ignored.
+  try {
+    const cookieStore = await cookies();
+    const headersList = await headers();
+
+    // Read cookie set by middleware (or generate locally for this first request's tracking)
+    let visitorId = cookieStore.get('evly_visitor')?.value;
+    if (!visitorId) {
+      visitorId = randomUUID();
+    }
+
+    const userAgent = headersList.get('user-agent') || '';
+    const deviceType = /Mobi|Android/i.test(userAgent) ? 'mobile' : 'desktop';
+    const source = headersList.get('referer') || null;
+
+    // Dedupe: only record if this visitor hasn't viewed this event before
+    const existingView = await prisma.viewTracking.findFirst({
+      where: {
+        eventId: event.id,
+        visitorId,
+      },
+    });
+
+    if (!existingView) {
+      await prisma.viewTracking.create({
+        data: {
+          eventId: event.id,
+          visitorId,
+          deviceType,
+          source,
+        },
+      });
+
+      // Increment analytics (creates the record for legacy events if needed)
+      await prisma.analytics.upsert({
+        where: { eventId: event.id },
+        create: {
+          eventId: event.id,
+          totalViews: 1,
+          uniqueVisitors: 1,
+          mobileViews: deviceType === 'mobile' ? 1 : 0,
+          desktopViews: deviceType === 'desktop' ? 1 : 0,
+        },
+        update: {
+          totalViews: { increment: 1 },
+          uniqueVisitors: { increment: 1 },
+          ...(deviceType === 'mobile'
+            ? { mobileViews: { increment: 1 } }
+            : { desktopViews: { increment: 1 } }),
+          updatedAt: new Date(),
+        },
+      });
+    }
+  } catch (e) {
+    // Never let view tracking break the page
+    console.error('View tracking error:', e);
   }
 
   const ai = event.aiContent as any || {};
@@ -58,7 +121,14 @@ export default async function MicrositePage({
         {/* Clean, elegant floating bubble animations behind the hero text.
             Inspired by premium sites like Antigravity — soft gold orbs rising gently
             with organic movement and subtle glow. Very low opacity so the text remains crisp. */}
-        <FloatingBubbles />
+        <FloatingBubbles 
+          count={45} 
+          minOpacity={0.18} 
+          maxOpacity={0.48} 
+          minSize={13} 
+          maxSize={54} 
+          blur={0.25} 
+        />
 
         <AnimatedHero
           names={names}

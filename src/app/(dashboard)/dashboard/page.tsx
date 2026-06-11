@@ -26,6 +26,7 @@ export default async function DashboardPage() {
       _count: {
         select: { rsvps: true },
       },
+      analytics: true,
     },
   });
 
@@ -75,7 +76,7 @@ export default async function DashboardPage() {
 
                 <div className="mt-4 flex items-center gap-4 text-sm text-[#f5f0e6]/70">
                   <div className="flex items-center gap-1">
-                    <Eye className="h-4 w-4" /> {event.viewCount || 0}
+                    <Eye className="h-4 w-4" /> {event.analytics?.totalViews ?? 0}
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-4 w-4" /> {event._count.rsvps}

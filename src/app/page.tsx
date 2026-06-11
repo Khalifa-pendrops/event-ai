@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { FloatingBubbles } from '@/components/microsite/FloatingBubbles';
 
 const eventTypes = ['Wedding', 'Traditional Marriage', 'Birthday'];
 
@@ -67,8 +68,18 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-[#f5f0e6]">
       {/* Hero */}
-      <section className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
-        <div className="max-w-4xl">
+      <section className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center overflow-hidden">
+        {/* More prominent bubbles for the landing page hero - higher count and stronger visibility */}
+        <FloatingBubbles 
+          count={45} 
+          minOpacity={0.18} 
+          maxOpacity={0.5} 
+          minSize={12} 
+          maxSize={55} 
+          blur={0.3} 
+        />
+
+        <div className="max-w-4xl relative z-10">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#C5A26F]/30 bg-[#111111] px-4 py-1 text-sm text-[#C5A26F]">
             <Sparkles className="h-4 w-4" />
             AI-Powered Luxury Invitations
@@ -99,7 +110,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="absolute bottom-12 text-xs uppercase tracking-[3px] text-[#f5f0e6]/40">
+        <div className="absolute bottom-12 z-10 text-xs uppercase tracking-[3px] text-[#f5f0e6]/40">
           Weddings • Traditional Marriages • Birthdays
         </div>
       </section>
@@ -117,14 +128,14 @@ export default function Home() {
               <motion.div
                 key={i}
                 className="card"
-                initial={{ opacity: 0, y: 50, scale: 0.96 }}
+                initial={{ opacity: 0, y: 65, scale: 0.94 }}
                 whileInView={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ 
-                  duration: 0.7, 
-                  ease: [0.21, 0.92, 0.2, 1], 
-                  delay: i * 0.12 
+                  duration: 0.8, 
+                  ease: [0.22, 1, 0.36, 1], 
+                  delay: i * 0.1 
                 }}
-                viewport={{ once: true, margin: "-80px" }}
+                viewport={{ once: true, margin: "-100px" }}
               >
                 <div className="text-4xl font-heading text-[#C5A26F]">{item.step}</div>
                 <h3 className="mt-4 text-2xl font-medium">{item.title}</h3>
@@ -161,11 +172,22 @@ export default function Home() {
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((tpl, i) => (
-              <div key={i} className="card group">
+              <motion.div
+                key={i}
+                className="card group"
+                initial={{ opacity: 0, y: 40, scale: 0.97 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  duration: 0.65, 
+                  ease: [0.22, 1, 0.36, 1], 
+                  delay: i * 0.06 
+                }}
+                viewport={{ once: true, margin: "-60px" }}
+              >
                 <div className="mb-4 h-2 w-12 rounded-full bg-[#C5A26F]/70 transition group-hover:bg-[#C5A26F]" />
                 <h3 className="text-2xl font-medium">{tpl.name}</h3>
                 <p className="mt-2 text-[#f5f0e6]/70">{tpl.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -177,13 +199,24 @@ export default function Home() {
           <h2 className="font-heading text-center text-5xl tracking-tight">Loved by couples and families</h2>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {testimonials.map((t, i) => (
-              <div key={i} className="card">
+              <motion.div
+                key={i}
+                className="card"
+                initial={{ opacity: 0, y: 55, scale: 0.95 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  duration: 0.75, 
+                  ease: [0.22, 1, 0.36, 1], 
+                  delay: i * 0.09 
+                }}
+                viewport={{ once: true, margin: "-90px" }}
+              >
                 <p className="text-lg leading-relaxed">“{t.quote}”</p>
                 <div className="mt-6 text-sm">
                   <div className="font-medium">{t.name}</div>
                   <div className="text-[#f5f0e6]/60">{t.event}</div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -199,7 +232,13 @@ export default function Home() {
 
           <div className="mt-12 grid gap-6 md:grid-cols-2">
             {/* Free */}
-            <div className="card">
+            <motion.div
+              className="card"
+              initial={{ opacity: 0, y: 45, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              viewport={{ once: true, margin: "-70px" }}
+            >
               <div className="text-sm font-medium text-[#C5A26F]">Free</div>
               <div className="mt-2 text-4xl font-heading tracking-tight">₦0</div>
               <ul className="mt-6 space-y-3 text-[#f5f0e6]/80">
@@ -209,10 +248,16 @@ export default function Home() {
                 <li>• Watermark on published site</li>
               </ul>
               <Link href="/dashboard" className="btn mt-8 w-full justify-center">Get started free</Link>
-            </div>
+            </motion.div>
 
             {/* Premium */}
-            <div className="card border-[#C5A26F]/60">
+            <motion.div
+              className="card border-[#C5A26F]/60"
+              initial={{ opacity: 0, y: 45, scale: 0.96 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+              viewport={{ once: true, margin: "-70px" }}
+            >
               <div className="text-sm font-medium text-[#C5A26F]">Premium</div>
               <div className="mt-2 text-4xl font-heading tracking-tight">One-time or monthly</div>
               <ul className="mt-6 space-y-3 text-[#f5f0e6]/80">
@@ -224,7 +269,7 @@ export default function Home() {
                 <li>• No watermark</li>
               </ul>
               <Link href="/dashboard" className="btn mt-8 w-full justify-center">Upgrade to Premium</Link>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
