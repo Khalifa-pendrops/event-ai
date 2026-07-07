@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ScrollRevealCard } from '@/components/homepage/ScrollRevealCard';
 import { FloatingBubbles } from '@/components/microsite/FloatingBubbles';
 
 const eventTypes = ['Wedding', 'Traditional Marriage', 'Birthday'];
@@ -125,22 +126,11 @@ export default function Home() {
               { step: '02', title: 'AI crafts your invitation', desc: 'We generate culturally appropriate copy, a refined color palette, and elegant typography.' },
               { step: '03', title: 'Share with guests', desc: 'Beautiful link, animated microsite, QR code, and built-in RSVP tracking.' },
             ].map((item, i) => (
-              <motion.div
-                key={i}
-                className="card"
-                initial={{ opacity: 0, y: 65, scale: 0.94 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
-                  duration: 0.8, 
-                  ease: [0.22, 1, 0.36, 1], 
-                  delay: i * 0.1 
-                }}
-                viewport={{ once: true, margin: "-100px" }}
-              >
+              <ScrollRevealCard key={i} index={i} stagger={0.14}>
                 <div className="text-4xl font-heading text-[#C5A26F]">{item.step}</div>
                 <h3 className="mt-4 text-2xl font-medium">{item.title}</h3>
                 <p className="mt-2 text-[#f5f0e6]/70">{item.desc}</p>
-              </motion.div>
+              </ScrollRevealCard>
             ))}
           </div>
         </div>
@@ -172,22 +162,11 @@ export default function Home() {
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((tpl, i) => (
-              <motion.div
-                key={i}
-                className="card group"
-                initial={{ opacity: 0, y: 40, scale: 0.97 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
-                  duration: 0.65, 
-                  ease: [0.22, 1, 0.36, 1], 
-                  delay: i * 0.06 
-                }}
-                viewport={{ once: true, margin: "-60px" }}
-              >
+              <ScrollRevealCard key={i} className="card group" index={i} stagger={0.08}>
                 <div className="mb-4 h-2 w-12 rounded-full bg-[#C5A26F]/70 transition group-hover:bg-[#C5A26F]" />
                 <h3 className="text-2xl font-medium">{tpl.name}</h3>
                 <p className="mt-2 text-[#f5f0e6]/70">{tpl.desc}</p>
-              </motion.div>
+              </ScrollRevealCard>
             ))}
           </div>
         </div>
@@ -199,24 +178,13 @@ export default function Home() {
           <h2 className="font-heading text-center text-5xl tracking-tight">Loved by couples and families</h2>
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             {testimonials.map((t, i) => (
-              <motion.div
-                key={i}
-                className="card"
-                initial={{ opacity: 0, y: 55, scale: 0.95 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ 
-                  duration: 0.75, 
-                  ease: [0.22, 1, 0.36, 1], 
-                  delay: i * 0.09 
-                }}
-                viewport={{ once: true, margin: "-90px" }}
-              >
+              <ScrollRevealCard key={i} index={i} stagger={0.12}>
                 <p className="text-lg leading-relaxed">“{t.quote}”</p>
                 <div className="mt-6 text-sm">
                   <div className="font-medium">{t.name}</div>
                   <div className="text-[#f5f0e6]/60">{t.event}</div>
                 </div>
-              </motion.div>
+              </ScrollRevealCard>
             ))}
           </div>
         </div>
@@ -232,13 +200,7 @@ export default function Home() {
 
           <div className="mt-12 grid gap-6 md:grid-cols-2">
             {/* Free */}
-            <motion.div
-              className="card"
-              initial={{ opacity: 0, y: 45, scale: 0.96 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              viewport={{ once: true, margin: "-70px" }}
-            >
+            <ScrollRevealCard index={0} stagger={0.15}>
               <div className="text-sm font-medium text-[#C5A26F]">Free</div>
               <div className="mt-2 text-4xl font-heading tracking-tight">₦0</div>
               <ul className="mt-6 space-y-3 text-[#f5f0e6]/80">
@@ -248,16 +210,9 @@ export default function Home() {
                 <li>• Watermark on published site</li>
               </ul>
               <Link href="/dashboard" className="btn mt-8 w-full justify-center">Get started free</Link>
-            </motion.div>
+            </ScrollRevealCard>
 
-            {/* Premium */}
-            <motion.div
-              className="card border-[#C5A26F]/60"
-              initial={{ opacity: 0, y: 45, scale: 0.96 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-              viewport={{ once: true, margin: "-70px" }}
-            >
+            <ScrollRevealCard className="card border-[#C5A26F]/60" index={1} stagger={0.15}>
               <div className="text-sm font-medium text-[#C5A26F]">Premium</div>
               <div className="mt-2 text-4xl font-heading tracking-tight">One-time or monthly</div>
               <ul className="mt-6 space-y-3 text-[#f5f0e6]/80">
@@ -269,7 +224,7 @@ export default function Home() {
                 <li>• No watermark</li>
               </ul>
               <Link href="/dashboard" className="btn mt-8 w-full justify-center">Upgrade to Premium</Link>
-            </motion.div>
+            </ScrollRevealCard>
           </div>
         </div>
       </section>
@@ -282,8 +237,10 @@ export default function Home() {
             {faqs.map((faq, i) => {
               const isOpen = openFaqs.includes(i);
               return (
-                <div
+                <ScrollRevealCard
                   key={i}
+                  index={i}
+                  stagger={0.07}
                   className={`rounded-2xl border bg-[#161616] p-6 transition-colors ${isOpen ? 'border-[#C5A26F]/40' : 'border-white/10'}`}
                 >
                   <button
@@ -309,7 +266,7 @@ export default function Home() {
                       {faq.a}
                     </div>
                   </motion.div>
-                </div>
+                </ScrollRevealCard>
               );
             })}
           </div>

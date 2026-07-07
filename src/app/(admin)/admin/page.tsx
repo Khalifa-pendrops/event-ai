@@ -39,13 +39,19 @@ export default async function AdminPage() {
     include: { event: true },
   });
 
-  const templates = await prisma.eventTemplate.findMany({
-    orderBy: { name: 'asc' },
-  });
+  const TEMPLATE_VARIANTS = [
+    'LUXURY_GOLD',
+    'ELEGANT_WHITE',
+    'AFRICAN_HERITAGE',
+    'FLORAL',
+    'MODERN_MINIMAL',
+    'BLACK_PREMIUM',
+  ] as const;
 
   const users = await prisma.user.findMany({
     take: 5,
     orderBy: { createdAt: 'desc' },
+    include: { subscription: true },
   });
 
   return (
@@ -107,7 +113,7 @@ export default async function AdminPage() {
               {users.map(user => (
                 <div key={user.id} className="flex justify-between border-b border-white/10 pb-2 last:border-0">
                   <div>{user.email} ({user.role})</div>
-                  <div className="text-[#f5f0e6]/70">{user.isPremium ? 'Premium' : 'Free'}</div>
+                  <div className="text-[#f5f0e6]/70">{user.subscription?.plan === 'PREMIUM' ? 'Premium' : 'Free'}</div>
                 </div>
               ))}
             </div>
@@ -116,28 +122,13 @@ export default async function AdminPage() {
           <div className="card">
             <h2 className="text-xl font-medium mb-4">Templates</h2>
             <div className="space-y-2 text-sm">
-              {templates.map(t => (
-                <div key={t.id} className="flex justify-between border-b border-white/10 pb-2 last:border-0">
-                  <div>{t.name}</div>
-                  <div className="text-[#f5f0e6]/70">{t.isActive ? 'Active' : 'Inactive'}</div>
+              {TEMPLATE_VARIANTS.map((name) => (
+                <div key={name} className="flex justify-between border-b border-white/10 pb-2 last:border-0">
+                  <div>{name.replace(/_/g, ' ')}</div>
+                  <div className="text-[#f5f0e6]/70">Active</div>
                 </div>
               ))}
             </div>
-
-            <form action={async (formData: FormData) => {
-              'use server';
-              const name = formData.get('name') as string;
-              const description = formData.get('description') as string;
-              if (name) {
-                await prisma.eventTemplate.create({
-                  data: { name, description: description || null, config: {}, isActive: true },
-                });
-              }
-            }} className="mt-4 flex gap-2">
-              <input name="name" placeholder="New template name" className="flex-1" required />
-              <input name="description" placeholder="Description" className="flex-1" />
-              <button type="submit" className="btn px-4 py-1 text-sm">Add</button>
-            </form>
           </div>
         </div>
       </div>
