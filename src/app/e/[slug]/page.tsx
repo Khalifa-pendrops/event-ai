@@ -98,9 +98,9 @@ export default async function MicrositePage({
   const bodyFont = event.bodyFont || ai.bodyFont || 'Inter';
 
   const isWeddingOrTraditional = event.type === 'WEDDING' || event.type === 'TRADITIONAL_MARRIAGE';
-  const names = isWeddingOrTraditional 
-    ? `${event.personOneName} & ${event.personTwoName}` 
-    : event.celebrantName;
+  const names = isWeddingOrTraditional
+    ? [event.personOneName, event.personTwoName].filter(Boolean).join(' & ') || 'Celebration'
+    : event.celebrantName ?? 'Celebration';
 
   const dateDisplay = new Date(event.eventDate).toLocaleDateString('en-US', {
     weekday: 'long',
