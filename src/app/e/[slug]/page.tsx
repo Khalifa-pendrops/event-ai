@@ -285,7 +285,7 @@ export default async function MicrositePage({
         <div className="fixed bottom-4 right-4 z-50">
           <MusicPlayer 
             url={event.musicUrl} 
-            category={event.musicCategory} 
+            category={event.musicCategory ?? undefined} 
             autoPlay={true} 
             compact={true} 
           />
