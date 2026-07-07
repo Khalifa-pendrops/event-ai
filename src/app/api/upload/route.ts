@@ -1,14 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { v2 as cloudinary } from 'cloudinary'
 
-// Configure Cloudinary from env
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-})
+async function getConfiguredCloudinary() {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME
+  const api_key = process.env.CLOUDINARY_API_KEY
+  const api_secret = process.env.CLOUDINARY_API_SECRET
+
+  if (!cloud_name || !api_key || !api_secret) {
+    return null
+  }
+
+  // A malformed CLOUDINARY_URL (common on Vercel) crashes the SDK at import time.
+  // Prefer the explicit vars when all three are set.
+  delete process.env.CLOUDINARY_URL
+
+  const { v2: cloudinary } = await import('cloudinary')
+  cloudinary.config({ cloud_name, api_key, api_secret, secure: true })
+  return cloudinary
+}
 
 export async function POST(request: NextRequest) {
+  const cloudinary = await getConfiguredCloudinary()
+  if (!cloudinary) {
+    return NextResponse.json({ error: 'Cloudinary not configured' }, { status: 503 })
+  }
+
   const formData = await request.formData()
   const files = formData.getAll('files') as File[]
 
@@ -17,16 +32,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const uploadPromises = files.map(async (file, i) => {
+    const uploadPromises = files.map(async (file) => {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
       const isAudio = file.type?.startsWith('audio/')
 
       return new Promise<{ url: string; publicId: string }>((resolve, reject) => {
-        const uploadOptions: any = {
+        const uploadOptions: Record<string, string> = {
           folder: isAudio ? 'evently/music' : 'evently/photos',
-          resource_type: isAudio ? 'video' : 'image', // video works well for audio files too
+          resource_type: isAudio ? 'video' : 'image',
         }
 
         cloudinary.uploader.upload_stream(
